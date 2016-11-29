@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-22 22:35:15
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-28 13:58:28
+# @Last Modified time: 2016-11-28 20:01:48
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -78,7 +78,7 @@ class disPCA:
         dNorms = np.zeros(d) # squared 2 norms for distributed matrices
 
         for i in range(n):
-            # Sample two bins based on distribution
+            # 1) Sample two bins based on distribution
             idx_ran = np.random.choice(d, 2, replace=False, p=pis)
             idx_sel = 0
 
@@ -107,7 +107,7 @@ class disPCA:
                     else:
                         idx_sel = self.bamCompare(Ais,i,idx_ran,mode_exact)
 
-            # Store ith row in selected bin
+            # 2) Store ith row in selected bin
             if dRows[idx_sel] == 0:
                 Ais[idx_sel] = self.A[i,:][None,:]
             else:
@@ -116,7 +116,7 @@ class disPCA:
             # Update stored number of rows
             dRows[idx_sel] += 1
 
-            # Updating sampling distribution
+            # 3) Updating sampling distribution
             if mode_sample != 0:
                 # Update 2 norm
                 dNorms[idx_sel] = np.linalg.norm(Ais[idx_sel],2)**2

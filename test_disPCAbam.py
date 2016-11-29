@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-28 14:41:35
+# @Last Modified time: 2016-11-28 19:54:47
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -28,7 +28,7 @@ n = 5000 # dimension of column space
 m = 200 # dimension of row space
 d = 10 # number of distributed system
 n = 10000
-mode_exact = 1
+mode_exact = 0
 mode_sample = 0
 mode_norm = 0
 gen_mode = 1
