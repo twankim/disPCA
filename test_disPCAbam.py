@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-28 19:54:47
+# @Last Modified time: 2016-11-28 20:47:13
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -31,7 +31,7 @@ n = 10000
 mode_exact = 0
 mode_sample = 0
 mode_norm = 0
-gen_mode = 1
+gen_mode = 2
 
 # Verbose option
 verbose = False
@@ -45,13 +45,18 @@ else:
 
 # Generate random matrix A
 def genRanMat(n,m,gen_mode=0,t1=0):
-    if gen_mode == 0: # Random matrix with Fixed singular values (decaying 1/k)
+    if gen_mode == 1: # Random matrix with Fixed singular values (decaying 1/k)
         A = random.rand(n,m)
         U, S, Vh = np.linalg.svd(A)
         for i in range(2*t1):
             S[i] = 1+1/float(i+1)
         S[2*t1:] = 0.1
         A = U[:,:len(S)].dot(np.diag(S)).dot(Vh)
+    elif gen_mode == 2: # Random matrix with several same rows
+        A = random.randn(n,m)
+        Asub = A[:int(n/d),:]
+        for idx in range(d):
+            A[range(idx,n,d)[:int(n/d)]] = Asub 
     else: # Standard normal random marix
         A = random.randn(n,m)
     return A
