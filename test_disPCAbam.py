@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-28 20:47:13
+# @Last Modified time: 2016-11-29 17:40:42
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -14,7 +14,7 @@ import time
 
 # ----------- Parameters for test -------------
 t1s = [5,10,15,20,30,50]
-t2 = 10 # target dimension of global PCA
+t2 = 20 # target dimension of global PCA
 eps_t1_bam = np.zeros(len(t1s))
 eps_t1_ran = np.zeros(len(t1s))
 eps_min_bam = np.zeros(len(t1s))
@@ -27,11 +27,11 @@ iterMax = 10
 n = 5000 # dimension of column space
 m = 200 # dimension of row space
 d = 10 # number of distributed system
-n = 10000
+# n = 10000
 mode_exact = 0
 mode_sample = 0
 mode_norm = 0
-gen_mode = 2
+gen_mode = 1
 
 # Verbose option
 verbose = False
@@ -44,13 +44,13 @@ else:
         pass
 
 # Generate random matrix A
-def genRanMat(n,m,gen_mode=0,t1=0):
+def genRanMat(n,m,gen_mode=0,k=0):
     if gen_mode == 1: # Random matrix with Fixed singular values (decaying 1/k)
         A = random.rand(n,m)
         U, S, Vh = np.linalg.svd(A)
-        for i in range(2*t1):
+        for i in range(k):
             S[i] = 1+1/float(i+1)
-        S[2*t1:] = 0.1
+        S[k:] = 0.1
         A = U[:,:len(S)].dot(np.diag(S)).dot(Vh)
     elif gen_mode == 2: # Random matrix with several same rows
         A = random.randn(n,m)
@@ -72,7 +72,7 @@ for idxt1, t1 in enumerate(t1s):
         print "-------------- {}: Trial # {}/{} --------------".format(idxt1,iterN,iterMax-1)
         
         # Generate random matrix A
-        A = genRanMat(n,m,gen_mode,t1)
+        A = genRanMat(n,m,gen_mode,t2)
 
         # Random (random distribution)
         vprint(" Distributing rows of matrix (random)...")
@@ -128,14 +128,14 @@ plt.plot(np.array(t1s)/float(t2),eps_t1_bam,'rx-',np.array(t1s)/float(t2),eps_t1
 plt.xlabel('t1/t2')
 plt.ylabel('log10(epsilon)')
 plt.legend(['BAM+disPCA','disPCA'])
-plt.title('<Mean epsilon>\nA random (n={}, m={}, d={})'.format(n,m,d))
+plt.title('<Mean epsilon>\nA random (n={}, m={}, d={}) gen_mode={}'.format(n,m,d,gen_mode))
 
 plt.figure()
 plt.plot(np.array(t1s)/float(t2),eps_max_bam,'rx-',np.array(t1s)/float(t2),eps_max_ran,'b^-')
 plt.xlabel('t1/t2')
 plt.ylabel('max(log10(epsilon))')
 plt.legend(['BAM+disPCA','disPCA'])
-plt.title('<Max epsilon>\nA random (n={}, m={}, d={})'.format(n,m,d))
+plt.title('<Max epsilon>\nA random (n={}, m={}, d={}) gen_mode={}'.format(n,m,d,gen_mode))
 
 plt.show()
 
