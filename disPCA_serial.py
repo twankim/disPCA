@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-22 22:35:15
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-28 20:01:48
+# @Last Modified time: 2016-11-29 22:04:23
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -151,13 +151,13 @@ class disPCA:
             # Bis[i] = np.diag(S[:t1]).dot(Vh[:t1,:])
             # Atis[i] = U[:,:t1].dot(Bis[i])
             ni = self.Ais[i].shape[0]
-            if t1 < ni:
+            if t1 < ni: # Target rank t1 is less than Number of Rows
                 U, S, Vt = svds(self.Ais[i], k=t1)
                 Bis[i] = np.diag(S).dot(Vt)
                 Atis[i] = U.dot(Bis[i])
-            else: # Number of Rows are less than t1
+            else: # Number of Rows is less than t1
                 U, S, Vt = svd(self.Ais[i])
-                Bis[i] = np.diag(S).dot(Vt[:ni,:])
+                Bis[i] = np.diag(S[:ni]).dot(Vt[:ni,:])
                 Atis[i] = self.Ais[i]
     
         # global PCA
@@ -175,17 +175,21 @@ class disPCA:
     
     # Project A onto C using distributed calculation to get low rank approximation
     # Return error of low rank approximation in Frobenius norm
-    def errLowrank(self):
+    def score(self,normtype):
         assert self.Bis != None, "Run fit function first to run distributed PCA"
-    
         # Compute Lowrank approximation of A
         # by projecting parition onto CC' and stack those matrices
-        Aapprox = np.concatenate([self.Atis[i].dot(self.C).dot(self.C.T) for i in range(self.d)],axis=0)
-        
-        self.err_lr = (np.linalg.norm(self.A-Aapprox,'fro'))**2
+        Aapprox = np.concatenate([self.Atis[i].dot(self.C).dot(self.C.T) for i in range(self.d)],axis=0)       
+        self.err_lr = self.errLowrank(self.A,Aapprox,normtype)
         return self.err_lr
 
-    # Calculate unbalancedness of distribution in frobenius norm    
+    @staticmethod
+    def errLowrank(A,Aapprox,normtype='fro'):
+        assert A.shape == Aapprox.shape, "!!!! Shape of two input matrices must match"
+        return (np.linalg.norm(A-Aapprox,normtype))**2
+
+    # !!!!!!!!!! To be fixed !!!!!!!!!!!!!!!!
+    # Calculate unbalancedness of distribution in frobenius norm
     def calcUnbal(self):
         avgNorm = math.sqrt((np.linalg.norm(self.A,'fro')**2)/float(self.d))
         self.avgDiff = np.sum([abs(avgNorm - np.linalg.norm(Ais[i],'fro'))/float(self.d)\

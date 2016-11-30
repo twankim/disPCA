@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-29 17:40:42
+# @Last Modified time: 2016-11-29 22:02:54
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -27,14 +27,20 @@ iterMax = 10
 n = 5000 # dimension of column space
 m = 200 # dimension of row space
 d = 10 # number of distributed system
-# n = 10000
 mode_exact = 0
 mode_sample = 0
 mode_norm = 0
-gen_mode = 1
+gen_mode = 2
+normtype = 'fro'
 
 # Verbose option
 verbose = False
+
+n=600
+m=50
+d=6
+t1s = [5,7,10,12,15,17]
+t2 = 10 # target dimension of global PCA
 
 if verbose:
     def vprint( obj ):
@@ -44,7 +50,11 @@ else:
         pass
 
 # Generate random matrix A
-def genRanMat(n,m,gen_mode=0,k=0):
+def genRanMat(n,m,gen_mode=0,k=0,d=d):
+    assert n>m, "!!!! n must be larger than m"
+    assert k<m, "!!!! k must be smaller than m"
+    assert d<n, "!!!! d must be smaller than n"
+
     if gen_mode == 1: # Random matrix with Fixed singular values (decaying 1/k)
         A = random.rand(n,m)
         U, S, Vh = np.linalg.svd(A)
@@ -53,10 +63,10 @@ def genRanMat(n,m,gen_mode=0,k=0):
         S[k:] = 0.1
         A = U[:,:len(S)].dot(np.diag(S)).dot(Vh)
     elif gen_mode == 2: # Random matrix with several same rows
-        A = random.randn(n,m)
-        Asub = A[:int(n/d),:]
-        for idx in range(d):
-            A[range(idx,n,d)[:int(n/d)]] = Asub 
+        n_sub = int(n/d)
+        Asub = random.randn(n_sub,m)
+        A = np.tile(Asub,(d,1))
+        A = np.concatenate((A,A[:n-n_sub*d,:]),axis=0)
     else: # Standard normal random marix
         A = random.randn(n,m)
     return A
@@ -82,7 +92,7 @@ for idxt1, t1 in enumerate(t1s):
         # apply disPCA    
         pca_ran.fit(t1=t1,t2=t2)
 
-        err_disPCA_ran = pca_ran.errLowrank()
+        err_disPCA_ran = pca_ran.score(normtype)
         
         # Balanced
         vprint(" Distributing rows of matrix (balanced)...")
@@ -98,12 +108,12 @@ for idxt1, t1 in enumerate(t1s):
         # apply disPCA
         pca_bam.fit(t1=t1,t2=t2)
 
-        err_disPCA_bam = pca_bam.errLowrank()
+        err_disPCA_bam = pca_bam.score(normtype)
         
         vprint(" Applying SVD for approximation...\n")
         U, S, Vh = svds(A, k=t2)
         Aopt = U.dot(np.diag(S)).dot(Vh)
-        err_opt = (np.linalg.norm(A-Aopt,'fro'))**2
+        err_opt = pca_bam.errLowrank(A,Aopt,normtype)
     
         eps_bam[iterN] = err_disPCA_bam/err_opt-1
         eps_ran[iterN] = err_disPCA_ran/err_opt-1
