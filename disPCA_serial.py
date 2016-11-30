@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-22 22:35:15
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-29 22:04:23
+# @Last Modified time: 2016-11-30 14:52:57
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -16,7 +16,8 @@ class disPCA:
     def __init__(self,A,d):
         self.A = A
         self.d = d
-        self.Ais = self.disRand() # initialize as random distribution
+        self.Ais = None
+        self.idx_dist = None
         self.C = None
         self.Bis = None
         self.Atis = None
@@ -30,7 +31,8 @@ class disPCA:
     def disRand(self):
         n = np.shape(self.A)[0]
         idx_rand = random.permutation(n)
-        return [self.A[idx_rand[range(gid,n,self.d)],:] for gid in range(self.d)]
+        self.idx_dist = [idx_rand[range(gid,n,self.d)] for gid in range(self.d)]
+        self.Ais = [self.A[idx_Ai,:] for idx_Ai in self.idx_dist]
 
     def bamCompare(self,Ais,i_row,i_ran,mode_exact):
         if mode_exact == 0: # Approximate distance
@@ -71,6 +73,7 @@ class disPCA:
 
         d = self.d
         Ais = [None] * d # allocation result
+        idx_dist = [None] * d# indices of A for each Ai
         n = np.shape(self.A)[0] # number of rows in A
         pis = [1/float(d)] * d # initialize sampling distribution
 
@@ -110,8 +113,10 @@ class disPCA:
             # 2) Store ith row in selected bin
             if dRows[idx_sel] == 0:
                 Ais[idx_sel] = self.A[i,:][None,:]
+                idx_dist[idx_sel] = np.array([i])
             else:
                 Ais[idx_sel] = np.concatenate((Ais[idx_sel],self.A[i,:][None,:]),axis=0)
+                idx_dist[idx_sel] = np.append(idx_dist[idx_sel],i)
         
             # Update stored number of rows
             dRows[idx_sel] += 1
@@ -126,12 +131,8 @@ class disPCA:
                     pis = self.sampDist2(dRows)
                 else:
                     pis = self.sampDist(dRows)
-
-        idxEmpty = np.where(dRows == 0)
-        numEmpty = d - np.count_nonzero(dRows) # Check whether there is an empty bin
-
         self.Ais = Ais
-        return Ais, idxEmpty, numEmpty
+        self.idx_dist = idx_dist
 
     # function for performing distributed PCA
     # Ais: list of distributed matrices [A1, A2, ... Ad]
@@ -140,6 +141,7 @@ class disPCA:
     # t2: target dimension for glboal PCA
     # C: matrix with size m by t2 where columns are t2 principal components of A
     def fit(self, t1, t2):
+        assert self.Ais != None, "!!!! First, distribute rows of A using disRand or disBAM"
         d = self.d # number of distributed matrice
         m = np.shape(self.A)[1] # dimension of row space
         Bis = [None] * d # outputs of local PCA
@@ -176,25 +178,29 @@ class disPCA:
     # Project A onto C using distributed calculation to get low rank approximation
     # Return error of low rank approximation in Frobenius norm
     def score(self,normtype):
-        assert self.Bis != None, "Run fit function first to run distributed PCA"
+        assert self.Bis != None, "!!!! Run fit function first to run distributed PCA"
         # Compute Lowrank approximation of A
         # by projecting parition onto CC' and stack those matrices
-        Aapprox = np.concatenate([self.Atis[i].dot(self.C).dot(self.C.T) for i in range(self.d)],axis=0)       
+        Aapprox = np.zeros(self.A.shape)
+
+        for Ati,idx_Ai in zip(self.Atis,self.idx_dist):
+            Aapprox[idx_Ai,:] = Ati.dot(self.C).dot(self.C.T)
+
         self.err_lr = self.errLowrank(self.A,Aapprox,normtype)
         return self.err_lr
-
-    @staticmethod
-    def errLowrank(A,Aapprox,normtype='fro'):
-        assert A.shape == Aapprox.shape, "!!!! Shape of two input matrices must match"
-        return (np.linalg.norm(A-Aapprox,normtype))**2
 
     # !!!!!!!!!! To be fixed !!!!!!!!!!!!!!!!
     # Calculate unbalancedness of distribution in frobenius norm
     def calcUnbal(self):
         avgNorm = math.sqrt((np.linalg.norm(self.A,'fro')**2)/float(self.d))
-        self.avgDiff = np.sum([abs(avgNorm - np.linalg.norm(Ais[i],'fro'))/float(self.d)\
-                               for i in range(self.d)])
+        self.avgDiff = np.sum([abs(avgNorm - np.linalg.norm(Ai,'fro'))/float(self.d)\
+                               for Ai in self.Ais])
         return self.avgDiff
+
+    @staticmethod
+    def errLowrank(A,Aapprox,normtype='fro'):
+        assert A.shape == Aapprox.shape, "!!!! Shape of two input matrices must match"
+        return (np.linalg.norm(A-Aapprox,normtype))**2
 
     @staticmethod
     def sampDist(dVals):

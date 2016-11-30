@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-29 22:02:54
+# @Last Modified time: 2016-11-30 15:36:07
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import time
 
 # ----------- Parameters for test -------------
-t1s = [5,10,15,20,30,50]
+t1s = [2,5,10,15,20,30,40]
 t2 = 20 # target dimension of global PCA
 eps_t1_bam = np.zeros(len(t1s))
 eps_t1_ran = np.zeros(len(t1s))
@@ -36,11 +36,21 @@ normtype = 'fro'
 # Verbose option
 verbose = False
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Temporary
 n=600
 m=50
 d=6
-t1s = [5,7,10,12,15,17]
+t1s = [2,5,7,10,12,15,20]
 t2 = 10 # target dimension of global PCA
+eps_t1_bam = np.zeros(len(t1s))
+eps_t1_ran = np.zeros(len(t1s))
+eps_min_bam = np.zeros(len(t1s))
+eps_min_ran = np.zeros(len(t1s))
+eps_max_bam = np.zeros(len(t1s))
+eps_max_ran = np.zeros(len(t1s))
+mode_exact = 0
+gen_mode = 0
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if verbose:
     def vprint( obj ):
@@ -60,7 +70,7 @@ def genRanMat(n,m,gen_mode=0,k=0,d=d):
         U, S, Vh = np.linalg.svd(A)
         for i in range(k):
             S[i] = 1+1/float(i+1)
-        S[k:] = 0.1
+        S[k:] = S[k-1]*0.01
         A = U[:,:len(S)].dot(np.diag(S)).dot(Vh)
     elif gen_mode == 2: # Random matrix with several same rows
         n_sub = int(n/d)
@@ -87,6 +97,7 @@ for idxt1, t1 in enumerate(t1s):
         # Random (random distribution)
         vprint(" Distributing rows of matrix (random)...")
         pca_ran = disPCA_serial.disPCA(A,d)
+        pca_ran.disRand()
         
         vprint(" Applying disPCA algorithm (random)...\n")
         # apply disPCA    
@@ -97,12 +108,13 @@ for idxt1, t1 in enumerate(t1s):
         # Balanced
         vprint(" Distributing rows of matrix (balanced)...")
         pca_bam = disPCA_serial.disPCA(A,d)
-        Ais,idxEmpty,numEmpty = pca_bam.disBAM(mode_exact=mode_exact,
-                                               mode_sample=mode_sample,
-                                               mode_norm=mode_norm
-                                               )
+        pca_bam.disBAM(mode_exact=mode_exact, mode_sample=mode_sample, mode_norm=mode_norm)
+
+        dRows = [Ais_j.shape[0] for Ais_j in pca_bam.Ais]
+        idxEmpty = np.where(dRows == 0)
+        numEmpty = d - np.count_nonzero(dRows) # Check whether there is an empty bin
         vprint("     -> Number of empty bins: {}".format(numEmpty))
-        vprint("     Number of rows {}".format(", ".join(map(str,[Ais[j].shape[0] for j in range(d)]))))
+        vprint("     Number of rows {}".format(", ".join(map(str,dRows))))
         
         vprint(" Applying disPCA algorithm (balanced)...\n")
         # apply disPCA
