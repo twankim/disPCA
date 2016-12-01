@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-22 22:35:15
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-30 14:52:57
+# @Last Modified time: 2016-11-30 17:45:27
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -13,9 +13,10 @@ from scipy import spatial
 import math
 
 class disPCA:
-    def __init__(self,A,d):
+    def __init__(self,A,d,r=1):
         self.A = A
         self.d = d
+        self.r = r # Don't need for random distribution
         self.Ais = None
         self.idx_dist = None
         self.C = None
@@ -36,25 +37,15 @@ class disPCA:
 
     def bamCompare(self,Ais,i_row,i_ran,mode_exact):
         if mode_exact == 0: # Approximate distance
-            val0 = spatial.distance.cosine(self.A[i_row,:][None,:],
-                                           Ais[i_ran[0]].T.dot(Ais[i_ran[0]]).dot(self.A[i_row,:][:,None])
-                                           )
-            val1 = spatial.distance.cosine(self.A[i_row,:][None,:],
-                                           Ais[i_ran[1]].T.dot(Ais[i_ran[1]]).dot(self.A[i_row,:][:,None])
-                                           )
+            vals = [spatial.distance.cosine(self.A[i_row,:][None,:],
+                                           Ais[i_r].T.dot(Ais[i_r]).dot(self.A[i_row,:][:,None])
+                                           ) for i_r in i_ran]
         else: # Exact distance with projected vector
-            val0 = spatial.distance.cosine(self.A[i_row,:][None,:],
-                                           pinv(Ais[i_ran[0]]).dot(Ais[i_ran[0]]).dot(self.A[i_row,:][:,None])
-                                           )
-            val1 = spatial.distance.cosine(self.A[i_row,:][None,:],
-                                           pinv(Ais[i_ran[1]]).dot(Ais[i_ran[1]]).dot(self.A[i_row,:][:,None])
-                                           )
-        if val0 > val1:
-            # First sampled bin has larger distance 
-            return i_ran[1]
-        else:
-            # Second sampled bin has smaller distance
-            return i_ran[0]
+            vals = [spatial.distance.cosine(self.A[i_row,:][None,:],
+                                            pinv(Ais[i_r]).dot(Ais[i_r]).dot(self.A[i_row,:][:,None])
+                                            ) for i_r in i_ran]
+        # Return sampled bin with the smallest distance
+        return i_ran[np.argmin(vals)]
 
     # Balanced Allocation for Matrix algorithm
     # A: input matrix (n by m)
@@ -72,6 +63,7 @@ class disPCA:
         self.mode_norm = mode_norm
 
         d = self.d
+        r = self.r
         Ais = [None] * d # allocation result
         idx_dist = [None] * d# indices of A for each Ai
         n = np.shape(self.A)[0] # number of rows in A
@@ -82,31 +74,26 @@ class disPCA:
 
         for i in range(n):
             # 1) Sample two bins based on distribution
-            idx_ran = np.random.choice(d, 2, replace=False, p=pis)
+            idx_ran = np.random.choice(d, r, replace=False, p=pis)
             idx_sel = 0
 
             if mode_norm == 0: # Consider only frobenius norm
                 # Select bin to store ith row of A with balancing
-                if dRows[idx_ran[0]] == 0:
-                    idx_sel = idx_ran[0]
-                elif dRows[idx_ran[1]] == 0:
-                    idx_sel = idx_ran[1]
+                if any(dRows[idx_ran] == 0):
+                    # A bin with 0 row exists
+                    idx_sel = idx_ran[dRows[idx_ran].argmin()]
                 else:
                     idx_sel = self.bamCompare(Ais,i,idx_ran,mode_exact)
             else: # consider both frobenius norm and number of rows 
                 # select bin to store ith row of A with balancing
-                if dRows[idx_ran[0]] < dRows[idx_ran[1]]:
-                    # First sampled bin has smaller number of rows
-                    idx_sel = idx_ran[0]
-                elif dRows[idx_ran[0]] > dRows[idx_ran[1]]:
-                    # Second sampled bin has smaller number of rows
-                    idx_sel = idx_ran[1]
+                if len(set(dRows))>1:
+                    # Number of rows are not even among r sampled bins
+                    idx_sel = idx_ran[dRows[idx_ran].argmin()]
                 else:
-                    # Two sampled bin has same number of rows
+                    # Number of rows are all equal
                     if dRows[idx_ran[0]] == 0:
+                        # Number of rows are all 0
                         idx_sel = idx_ran[0]
-                    elif dRows[idx_ran[1]] == 0:
-                        idx_sel = idx_ran[1]
                     else:
                         idx_sel = self.bamCompare(Ais,i,idx_ran,mode_exact)
 
