@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-11-30 18:16:49
+# @Last Modified time: 2016-12-01 07:47:30
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 import time
 
 # ----------- Parameters for disPCA and BAM --------------
-n = 10000 # dimension of column space
+n = 5000 # dimension of column space
 m = 200 # dimension of row space
-d = 20 # number of distributed system
+d = 10 # number of distributed system
 mode_exact = 0
 mode_sample = 0
 mode_norm = 0
