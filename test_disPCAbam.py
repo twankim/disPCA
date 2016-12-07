@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-12-01 07:47:30
+# @Last Modified time: 2016-12-07 15:17:06
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -36,20 +36,20 @@ iterMax = 10
 verbose = False # Verbose option
 
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Temporary
-n=600
-m=50
-d=6
-t1s = [2,5,7,10,12,15,20]
-t2 = 10 # target dimension of global PCA
-rs = range(2,d+1,2)
-eps_t1_ran = np.zeros(len(t1s))
-eps_min_ran = np.zeros(len(t1s))
-eps_max_ran = np.zeros(len(t1s))
-eps_t1_bam = np.zeros((len(t1s),len(rs)))
-eps_min_bam = np.zeros((len(t1s),len(rs)))
-eps_max_bam = np.zeros((len(t1s),len(rs)))
-mode_exact = 0
-gen_mode = 0
+# n=600
+# m=50
+# d=6
+# t1s = [2,5,7,10,12,15,20]
+# t2 = 10 # target dimension of global PCA
+# rs = range(2,d+1,2)
+# eps_t1_ran = np.zeros(len(t1s))
+# eps_min_ran = np.zeros(len(t1s))
+# eps_max_ran = np.zeros(len(t1s))
+# eps_t1_bam = np.zeros((len(t1s),len(rs)))
+# eps_min_bam = np.zeros((len(t1s),len(rs)))
+# eps_max_bam = np.zeros((len(t1s),len(rs)))
+# mode_exact = 0
+# gen_mode = 0
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if verbose:
@@ -98,20 +98,28 @@ for idxt1, t1 in enumerate(t1s):
         # Random (random distribution)
         vprint(" Distributing rows of matrix (random)...")
         pca_ran = disPCA_serial.disPCA(A,d)
+        time0 = time.time()
         pca_ran.disRand()
+        time_disrand = (time.time()-time0)*1000.0
         
         vprint(" Applying disPCA algorithm (random)...\n")
-        # apply disPCA    
+        # apply disPCA
+        time0 = time.time()
         pca_ran.fit(t1=t1,t2=t2)
+        time_fitrand = (time.time()-time0)*1000.0
 
         err_disPCA_ran = pca_ran.score(normtype)
+
+        print " Time Random - dist: {}ms, pca: {}ms".format(time_disrand,time_fitrand)
 
         # Balanced
         err_disPCA_bam = np.zeros(len(rs))
         for idx_r, r in enumerate(rs):
             vprint(" Distributing rows of matrix (balanced)...")
             pca_bam = disPCA_serial.disPCA(A,d,r)
+            time0 = time.time()
             pca_bam.disBAM(mode_exact=mode_exact, mode_sample=mode_sample, mode_norm=mode_norm)
+            time_disbam = (time.time()-time0)*1000.0
 
             dRows = [Ais_j.shape[0] for Ais_j in pca_bam.Ais]
             idxEmpty = np.where(dRows == 0)
@@ -121,13 +129,18 @@ for idxt1, t1 in enumerate(t1s):
         
             vprint(" Applying disPCA algorithm (balanced)...\n")
             # apply disPCA
+            time0 = time.time()
             pca_bam.fit(t1=t1,t2=t2)
+            time_fitbam = (time.time()-time0)*1000.0
 
             err_disPCA_bam[idx_r] = pca_bam.score(normtype)
+            print " Time BAM(r={}) - dist: {}ms, pca: {}ms".format(r,time_disbam,time_fitbam)
         
         # Evaluation
         vprint(" Applying SVD for approximation...\n")
+        time0 = time.time()
         U, S, Vh = svds(A, k=t2)
+        print " Time PCA - {}ms".format((time.time()-time0)*1000.0)
         Aopt = U.dot(np.diag(S)).dot(Vh)
         err_opt = pca_bam.errLowrank(A,Aopt,normtype)
     
