@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-22 22:35:15
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-12-07 16:12:36
+# @Last Modified time: 2016-12-08 17:11:45
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -18,6 +18,7 @@ class disPCA:
         self.d = d
         self.r = r # Don't need for random distribution
         self.Ais = None
+        self.AiCovs = None
         self.idx_dist = None
         self.C = None
         self.Bis = None
@@ -35,10 +36,10 @@ class disPCA:
         self.idx_dist = [idx_rand[range(gid,n,self.d)] for gid in range(self.d)]
         self.Ais = [self.A[idx_Ai,:] for idx_Ai in self.idx_dist]
 
-    def bamCompare(self,Ais,i_row,i_ran,mode_exact):
+    def bamCompare(self,Ais,AiCovs,i_row,i_ran,mode_exact):
         if mode_exact == 0: # Approximate distance
             vals = [spatial.distance.cosine(self.A[i_row,:][None,:],
-                                           Ais[i_r].T.dot(Ais[i_r]).dot(self.A[i_row,:][:,None])
+                                           AiCovs[i_r].dot(self.A[i_row,:][:,None])
                                            ) for i_r in i_ran]
         else: # Exact distance with projected vector
             vals = [spatial.distance.cosine(self.A[i_row,:][None,:],
@@ -65,6 +66,7 @@ class disPCA:
         d = self.d
         r = self.r
         Ais = [None] * d # allocation result
+        AiCovs = [None] * d # Covaraince matrix of Ais
         idx_dist = [None] * d# indices of A for each Ai
         n = np.shape(self.A)[0] # number of rows in A
         pis = [1/float(d)] * d # initialize sampling distribution
@@ -83,7 +85,7 @@ class disPCA:
                     # A bin with 0 row exists
                     idx_sel = idx_ran[dRows[idx_ran].argmin()]
                 else:
-                    idx_sel = self.bamCompare(Ais,i,idx_ran,mode_exact)
+                    idx_sel = self.bamCompare(Ais,AiCovs,i,idx_ran,mode_exact)
             else: # consider both frobenius norm and number of rows 
                 # select bin to store ith row of A with balancing
                 if len(set(dRows))>1:
@@ -95,14 +97,16 @@ class disPCA:
                         # Number of rows are all 0
                         idx_sel = idx_ran[0]
                     else:
-                        idx_sel = self.bamCompare(Ais,i,idx_ran,mode_exact)
+                        idx_sel = self.bamCompare(Ais,AiCovs,i,idx_ran,mode_exact)
 
             # 2) Store ith row in selected bin
             if dRows[idx_sel] == 0:
                 Ais[idx_sel] = self.A[i,:][None,:]
+                AiCovs[idx_sel] = np.outer(self.A[i,:],self.A[i,:])
                 idx_dist[idx_sel] = np.array([i])
             else:
                 Ais[idx_sel] = np.concatenate((Ais[idx_sel],self.A[i,:][None,:]),axis=0)
+                AiCovs[idx_sel] += np.outer(self.A[i,:],self.A[i,:])
                 idx_dist[idx_sel] = np.append(idx_dist[idx_sel],i)
         
             # Update stored number of rows
@@ -119,6 +123,7 @@ class disPCA:
                 else:
                     pis = self.sampDist(dRows)
         self.Ais = Ais
+        self.AiCovs = AiCovs
         self.idx_dist = idx_dist
 
     # function for performing distributed PCA
