@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-12-08 11:24:06
+# @Last Modified time: 2016-12-08 18:02:56
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -174,8 +174,9 @@ plt.xlabel('t1/t2')
 plt.ylabel('log10(epsilon)')
 plt.legend(legends)
 plt.title('<Mean log-epsilon>\nA random (n={}, m={}, d={}) gen_mode={}'.format(n,m,d,gen_mode))
+plt.savefig('results/fig1_{}.png'.format(time.strftime('%Y%m%d_%H%M%S')))
 
-plt.figure()
+fig2 = plt.figure()
 plt.plot(np.array(t1s)/float(t2),eps_max_ran,'^-')
 for i_r, r in enumerate(rs):
     plt.plot(np.array(t1s)/float(t2),eps_max_bam[:,i_r],'x-')
@@ -183,6 +184,7 @@ plt.xlabel('t1/t2')
 plt.ylabel('max(log10(epsilon))')
 plt.legend(legends)
 plt.title('<Max log-epsilon>\nA random (n={}, m={}, d={}) gen_mode={}'.format(n,m,d,gen_mode))
+plt.savefig('results/fig2_{}.png'.format(time.strftime('%Y%m%d_%H%M%S')))
 
 plt.show()
 
