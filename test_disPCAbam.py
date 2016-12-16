@@ -2,10 +2,11 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-12-08 18:02:56
+# @Last Modified time: 2016-12-16 16:07:09
 # -*- coding: utf-8 -*-
 
-import disPCA_serial
+# import disPCA_serial
+import fast_disPCA_serial
 import numpy as np
 from numpy import random
 from scipy.sparse.linalg import svds
@@ -97,7 +98,8 @@ for idxt1, t1 in enumerate(t1s):
 
         # Random (random distribution)
         vprint(" Distributing rows of matrix (random)...")
-        pca_ran = disPCA_serial.disPCA(A,d)
+        # pca_ran = disPCA_serial.disPCA(A,d)
+        pca_ran = fast_disPCA_serial.disPCA(A,d)
         time0 = time.time()
         pca_ran.disRand()
         time_disrand = (time.time()-time0)*1000.0
@@ -110,13 +112,15 @@ for idxt1, t1 in enumerate(t1s):
 
         err_disPCA_ran = pca_ran.score(normtype)
 
-        print " Time Random - dist: {}ms, pca: {}ms".format(time_disrand,time_fitrand)
+        print " Time Random - dist: {}ms, pca: {}ms (Avg. {}ms)".format(
+                                            time_disrand,time_fitrand, time_fitrand/d)
 
         # Balanced
         err_disPCA_bam = np.zeros(len(rs))
         for idx_r, r in enumerate(rs):
             vprint(" Distributing rows of matrix (balanced)...")
-            pca_bam = disPCA_serial.disPCA(A,d,r)
+            # pca_bam = disPCA_serial.disPCA(A,d,r)
+            pca_bam = fast_disPCA_serial.disPCA(A,d)
             time0 = time.time()
             pca_bam.disBAM(mode_exact=mode_exact, mode_sample=mode_sample, mode_norm=mode_norm)
             time_disbam = (time.time()-time0)*1000.0
@@ -134,7 +138,8 @@ for idxt1, t1 in enumerate(t1s):
             time_fitbam = (time.time()-time0)*1000.0
 
             err_disPCA_bam[idx_r] = pca_bam.score(normtype)
-            print " Time BAM(r={}) - dist: {}ms, pca: {}ms".format(r,time_disbam,time_fitbam)
+            print " Time BAM(r={}) - dist: {}ms, pca: {}ms (Avg. {}ms)".format(
+                                            r,time_disbam,time_fitbam,time_fitbam/d)
         
         # Evaluation
         vprint(" Applying SVD for approximation...\n")
