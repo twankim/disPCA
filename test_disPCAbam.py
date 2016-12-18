@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2016-12-16 16:07:09
+# @Last Modified time: 2016-12-18 15:25:55
 # -*- coding: utf-8 -*-
 
 # import disPCA_serial
@@ -120,7 +120,7 @@ for idxt1, t1 in enumerate(t1s):
         for idx_r, r in enumerate(rs):
             vprint(" Distributing rows of matrix (balanced)...")
             # pca_bam = disPCA_serial.disPCA(A,d,r)
-            pca_bam = fast_disPCA_serial.disPCA(A,d)
+            pca_bam = fast_disPCA_serial.disPCA(A,d,r)
             time0 = time.time()
             pca_bam.disBAM(mode_exact=mode_exact, mode_sample=mode_sample, mode_norm=mode_norm)
             time_disbam = (time.time()-time0)*1000.0
