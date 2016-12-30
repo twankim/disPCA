@@ -1,6 +1,9 @@
 # Result files
 results
 
+# Data folder
+data
+
 # Image files
 *.jpg
 *.jpeg
