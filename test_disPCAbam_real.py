@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-24 18:25:48
 # @Last Modified by:   twankim
-# @Last Modified time: 2017-01-06 23:14:05
+# @Last Modified time: 2017-01-02 17:38:52
 # -*- coding: utf-8 -*-
 
 import disPCA_serial
@@ -26,7 +26,7 @@ normtype = 'fro'
 # ----------- Parameters for test -------------
 t1s = [2,5,10,15,20,25]
 t2 = 10 # target dimension of global PCA
-rs = range(2,d+1,2) # number of bins to select
+rs = range(2,d+1,2)
 eps_t1_ran = np.zeros(len(t1s))
 eps_min_ran = np.zeros(len(t1s))
 eps_max_ran = np.zeros(len(t1s))
@@ -52,7 +52,7 @@ eps_min_bam = np.zeros((len(t1s),len(rs)))
 eps_max_bam = np.zeros((len(t1s),len(rs)))
 mode_exact = 0
 gen_mode = 0
-isFast = True # Fast mode on
+isFast = False # Fast mode on
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if verbose:
@@ -125,8 +125,7 @@ for idxt1, t1 in enumerate(t1s):
         for idx_r, r in enumerate(rs):
             vprint(" Distributing rows of matrix (balanced)...")
             if isFast:
-                ell = t1
-                pca_bam = fast_disPCA_serial.disPCA(A,d,r,ell)
+                pca_bam = fast_disPCA_serial.disPCA(A,d,r)
             else:
                 pca_bam = disPCA_serial.disPCA(A,d,r)
             time0 = time.time()

@@ -2,7 +2,7 @@
 # @Author: twankim
 # @Date:   2016-11-22 22:35:15
 # @Last Modified by:   twankim
-# @Last Modified time: 2017-01-06 23:15:31
+# @Last Modified time: 2016-12-18 15:58:53
 # -*- coding: utf-8 -*-
 
 import numpy as np
@@ -13,13 +13,12 @@ from scipy import spatial
 import math
 
 class disPCA:
-    def __init__(self,A,d,r=1,l=1):
+    def __init__(self,A,d,r=1):
         self.A = A
         self.d = d
         self.r = r # Don't need for random distribution
-        self.l = l # Don't need for random distribution
         self.Ais = None
-        self.AiCovs = None
+        self.AiReps = None
         self.idx_dist = None
         self.C = None
         self.Bis = None
@@ -37,15 +36,12 @@ class disPCA:
         self.idx_dist = [idx_rand[range(gid,n,self.d)] for gid in range(self.d)]
         self.Ais = [self.A[idx_Ai,:] for idx_Ai in self.idx_dist]
 
-    def bamCompare(self,Ais,AiCovs,i_row,i_ran,mode_exact):
+    def bamCompare(self,Ais,AiReps,i_row,i_ran,mode_exact):
         if mode_exact == 0: # Approximate distance
-            sai_row = self.S.dot(self.A[i_row,:])
-            vals = [spatial.distance.cosine(sai_row,
-                                           AiCovs[i_r].dot(sai_row)
-                                           ) for i_r in i_ran]
+            vals = [spatial.distance.cosine(self.A[i_row,:],AiReps[i_r]) for i_r in i_ran]
         else: # Exact distance with projected vector
-            vals = [spatial.distance.cosine(self.A[i_row,:],
-                                            pinv(Ais[i_r]).dot(Ais[i_r]).dot(self.A[i_row,:])
+            vals = [spatial.distance.cosine(self.A[i_row,:][None,:],
+                                            pinv(Ais[i_r]).dot(Ais[i_r]).dot(self.A[i_row,:][:,None])
                                             ) for i_r in i_ran]
         # Return sampled bin with the smallest distance
         return i_ran[np.argmin(vals)]
@@ -68,12 +64,10 @@ class disPCA:
         d = self.d
         r = self.r
         Ais = [None] * d # allocation result
-        AiCovs = [None] * d # Covaraince matrix of Ais
+        AiReps = [None] * d # Representative rows for each Ai
         idx_dist = [None] * d# indices of A for each Ai
-        n,m = np.shape(self.A) # number of rows in A
+        n = np.shape(self.A)[0] # number of rows in A
         pis = [1/float(d)] * d # initialize sampling distribution
-
-        self.S = self.subEmbedMat(self.l,m) # Subspace embedding matrix
 
         dRows = np.zeros(d) # number of rows stored in Ais    
         dNorms = np.zeros(d) # squared 2 norms for distributed matrices
@@ -89,7 +83,7 @@ class disPCA:
                     # A bin with 0 row exists
                     idx_sel = idx_ran[dRows[idx_ran].argmin()]
                 else:
-                    idx_sel = self.bamCompare(Ais,AiCovs,i,idx_ran,mode_exact)
+                    idx_sel = self.bamCompare(Ais,AiReps,i,idx_ran,mode_exact)
             else: # consider both frobenius norm and number of rows 
                 # select bin to store ith row of A with balancing
                 if len(set(dRows))>1:
@@ -101,18 +95,17 @@ class disPCA:
                         # Number of rows are all 0
                         idx_sel = idx_ran[0]
                     else:
-                        idx_sel = self.bamCompare(Ais,AiCovs,i,idx_ran,mode_exact)
+                        idx_sel = self.bamCompare(Ais,AiReps,i,idx_ran,mode_exact)
 
             # 2) Store ith row in selected bin
             if dRows[idx_sel] == 0:
                 Ais[idx_sel] = self.A[i,:][None,:]
-                sai = self.S.dot(self.A[i,:])
-                AiCovs[idx_sel] = np.outer(sai,sai)
+                AiReps[idx_sel] = self.A[i,:] # Update repersentative row
                 idx_dist[idx_sel] = np.array([i])
             else:
                 Ais[idx_sel] = np.concatenate((Ais[idx_sel],self.A[i,:][None,:]),axis=0)
-                sai = self.S.dot(self.A[i,:])
-                AiCovs[idx_sel] = np.outer(sai,sai)
+                # AiReps[idx_sel] = self.A[i,:] # Update repersentative row as previously assigned row
+                AiReps[idx_sel] = (AiReps[idx_sel]*dRows[idx_sel]+self.A[i,:])/float(dRows[idx_sel]+1) # Update repersentative row as average of stored rows
                 idx_dist[idx_sel] = np.append(idx_dist[idx_sel],i)
         
             # Update stored number of rows
@@ -129,7 +122,7 @@ class disPCA:
                 else:
                     pis = self.sampDist(dRows)
         self.Ais = Ais
-        self.AiCovs = AiCovs
+        self.AiReps = AiReps
         self.idx_dist = idx_dist
 
     # function for performing distributed PCA
@@ -213,7 +206,3 @@ class disPCA:
         pis = 1/(dVals+1)
         pis = pis/np.sum(pis)
         return pis.tolist()
-
-    @staticmethod
-    def subEmbedMat(l,m):
-        return 1/np.sqrt(l)*np.random.randn(l,m)
